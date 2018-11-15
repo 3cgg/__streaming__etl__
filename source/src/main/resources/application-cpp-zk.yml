@@ -1,9 +1,0 @@
-cpp:
-  zk:
-    namespace: cpp-bigdata-stream
-    connect-string: zk.3cgg.rec:2181
-
-
-
-
-
