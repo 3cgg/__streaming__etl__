@@ -1,0 +1,39 @@
+{
+
+  "stream":{
+    "name":"stream",
+    "windowCount":100,
+    "windowTime":1000,
+    "schedule":5000,
+    "windowExecutor":1,
+    "executor":3,
+    "paramFactory":"me.libme.xstream.stream.NoopParamFactory",
+    "properties":{
+
+    }
+  },
+
+  "source":{
+    "name":"Kafka Sourcer",
+    "factory":"me.libme.xstream.bigdata.KafkaWindowSourcerFactory",
+    "properties":{
+      "topic":"__debug__",
+      "partion":[0],
+      "timeout":3000,
+      "tableName":"cpp-debug-tracker",
+      "family":"tracking"
+    }
+  },
+
+  "operation":[
+    {
+      "name":"Logger",
+      "type":"Consumer",
+      "factory":"me.libme.xstream.fn.logger.LoggerFactory",
+      "properties":{
+
+      }
+
+    }
+  ]
+}
