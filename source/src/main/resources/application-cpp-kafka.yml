@@ -1,0 +1,18 @@
+cpp:
+  kafka:
+    properties: {
+      bootstrap.servers: "kafka.3cgg.rec:9092"
+    }
+    producer: {
+      value.serializer: org.apache.kafka.common.serialization.StringSerializer
+    }
+
+    consumer: {
+      value.deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    }
+
+
+
+
+
+

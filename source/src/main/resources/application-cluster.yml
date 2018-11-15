@@ -1,0 +1,16 @@
+cpp:
+  cluster:
+    name: Cluster
+    master:
+      netty:
+        host: 0.0.0.0
+        port: 10089
+    properties: {
+      a: a
+    }
+
+
+
+
+
+
