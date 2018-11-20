@@ -8,18 +8,18 @@ import java.util.Map;
 /**
  * Created by J on 2018/11/19.
  */
-public class ConsumerCounterModel extends CounterModel implements JModel,JJSONObject<Map>{
+public class ProducerCounterModel extends CounterModel implements JModel,JJSONObject<Map>{
 
-    private String consumerName;
+    private String producerName;
 
     private long count;
 
-    public String getConsumerName() {
-        return consumerName;
+    public String getProducerName() {
+        return producerName;
     }
 
-    public void setConsumerName(String consumerName) {
-        this.consumerName = consumerName;
+    public void setProducerName(String producerName) {
+        this.producerName = producerName;
     }
 
     public long getCount() {

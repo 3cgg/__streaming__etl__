@@ -5,12 +5,15 @@ import me.libme.cls.cluster.ClusterConfig;
 import me.libme.cls.cluster.ClusterInfo;
 import me.libme.cls.cluster.PathListenerClientFactory;
 import me.libme.kernel._c.json.JJSON;
-import me.libme.streaming.bigdata._trait.ConsumerCountReporter;
 import me.libme.streaming.bigdata._trait.ConsumerCounterModel;
+import me.libme.streaming.bigdata._trait.CounterReporter;
+import me.libme.streaming.bigdata._trait.NodeCounterModel;
+import me.libme.streaming.bigdata._trait.ProducerCounterModel;
+import me.libme.xstream.fn.counter.ConsumerCountService;
+import me.libme.xstream.fn.counter.ProducerCountService;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -26,7 +29,7 @@ public class CounterSchedule implements Action {
 
     private ClusterConfig clusterConfig= null;
 
-    private ConsumerCountReporter consumerCountReporter;
+    private CounterReporter consumerCountReporter;
 
     private long startTime;
 
@@ -34,7 +37,7 @@ public class CounterSchedule implements Action {
     public void prepare() throws Exception {
         scheduledExecutorService= Executors.newScheduledThreadPool(1);
         clusterConfig= ClusterInfo.defaultConfig();
-        consumerCountReporter= PathListenerClientFactory.factory(ConsumerCountReporter.class,ConsumerCountReporter.PATH);
+        consumerCountReporter= PathListenerClientFactory.factory(CounterReporter.class, CounterReporter.PATH);
         startTime=new Date().getTime();
     }
 
@@ -42,19 +45,55 @@ public class CounterSchedule implements Action {
     public void start() throws Exception {
         scheduledExecutorService.scheduleAtFixedRate(()->{
 
-            Map<String,Long> consumerCount= CounterService.get().consumerCount();
+            long time=new Date().getTime();
+            Map<String,NodeCounterModel> streams=new HashMap<>();
 
-            List<ConsumerCounterModel> consumerCounterModels=new ArrayList<>();
+            Map<String,Long> consumerCount= ConsumerCountService.get().counter();
             consumerCount.forEach((key,val)->{
                 ConsumerCounterModel consumerCounterModel=new ConsumerCounterModel();
                 consumerCounterModel.setNodeName(clusterConfig.getWorker().getName());
-                consumerCounterModel.setConsumerName(key);
+                consumerCounterModel.setConsumerName(ConsumerCountService.get().consumerName(key));
+                consumerCounterModel.setStreamName(ConsumerCountService.get().streamName(key));
+
                 consumerCounterModel.setCount(val.longValue());
-                consumerCounterModel.setTime(new Date().getTime());
+                consumerCounterModel.setTime(time);
                 consumerCounterModel.setStartTime(startTime);
-                consumerCounterModels.add(consumerCounterModel);
+                if(!streams.containsKey(consumerCounterModel.getStreamName())){
+                    NodeCounterModel nodeCounterModel=new NodeCounterModel();
+                    nodeCounterModel.setNodeName(clusterConfig.getWorker().getName());
+                    nodeCounterModel.setStartTime(startTime);
+                    nodeCounterModel.setTime(time);
+                    nodeCounterModel.setStreamName(consumerCounterModel.getStreamName());
+
+                    nodeCounterModel.getConsumers().add(consumerCounterModel);
+                    streams.put(consumerCounterModel.getStreamName(),nodeCounterModel);
+                }else {
+                    streams.get(consumerCounterModel.getStreamName()).getConsumers().add(consumerCounterModel);
+                }
             });
-            consumerCountReporter.count(JJSON.get().format(consumerCounterModels),null);
+
+
+            Map<String,Long> producerCount= ProducerCountService.get().counter();
+            producerCount.forEach((key,val)->{
+                ProducerCounterModel producerCounterModel=new ProducerCounterModel();
+                producerCounterModel.setNodeName(clusterConfig.getWorker().getName());
+                producerCounterModel.setProducerName(ProducerCountService.get().producerName(key));
+                producerCounterModel.setStreamName(ProducerCountService.get().streamName(key));
+                producerCounterModel.setCount(val.longValue());
+                producerCounterModel.setTime(time);
+                producerCounterModel.setStartTime(startTime);
+                if(!streams.containsKey(producerCounterModel.getStreamName())){
+                    NodeCounterModel nodeCounterModel=new NodeCounterModel();
+                    nodeCounterModel.setNodeName(clusterConfig.getWorker().getName());
+                    nodeCounterModel.setStartTime(startTime);
+                    nodeCounterModel.setTime(time);
+                    nodeCounterModel.setStreamName(producerCounterModel.getStreamName());
+                    nodeCounterModel.getProducers().add(producerCounterModel);
+                }else {
+                    streams.get(producerCounterModel.getStreamName()).getProducers().add(producerCounterModel);
+                }
+            });
+            consumerCountReporter.count(JJSON.get().format(streams.values()),null);
         },10,30, TimeUnit.SECONDS);
     }
 
@@ -62,6 +101,8 @@ public class CounterSchedule implements Action {
     public void shutdown() throws Exception {
         scheduledExecutorService.shutdown();
     }
+
+
 
 
 
