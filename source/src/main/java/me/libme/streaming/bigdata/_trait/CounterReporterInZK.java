@@ -37,15 +37,26 @@ public class CounterReporterInZK implements CounterReporter {
             executor= ZKExecutor.defaultExecutor();
             scheduledExecutorService= Executors.newScheduledThreadPool(1);
             scheduledExecutorService.scheduleAtFixedRate(()->{
-                List<ConsumerCounterModel> consumerCounterModels=new ArrayList<>();
+                Map<String,List<NodeCounterModel>> map=new HashMap<>();
                 nodeConsumeCounters.keys().forEach((key)->{
-
-                    ConsumerCounterModel consumerCounterModel=nodeConsumeCounters.get(key);
-                    consumerCounterModels.add(consumerCounterModel);
+                    String streamName=key.split("-")[0];
+                    if(!map.containsKey(streamName)){
+                        List<NodeCounterModel> nodeCounterModels=new ArrayList<>();
+                        nodeCounterModels.add(nodeConsumeCounters.get(key));
+                        map.put(streamName,nodeCounterModels);
+                    }else{
+                        map.get(streamName).add(nodeConsumeCounters.get(key));
+                    }
                 });
-
-                executor.createPath("/report/fn/counter", JJSON.get().format(consumerCounterModels));
-
+                map.forEach((streamName,list)->{
+                    String streamPath="/report/fn/counter/"
+                            +streamName.replace(" ","-").replace("/","-");
+                    if(executor.exists(streamPath)){
+                        executor.setPath(streamPath,JJSON.get().format(list));
+                    }else {
+                        executor.createPath(streamPath,JJSON.get().format(list));
+                    }
+                });
             },10,120, TimeUnit.SECONDS);
         });
     }
@@ -59,10 +70,10 @@ public class CounterReporterInZK implements CounterReporter {
         nodeCounterModels.forEach(nodeCounterModel -> {
 
             String key=key(nodeCounterModel);
-            NodeCounterModel counterModel= nodeConsumeCounters.get(key);
-            if(counterModel==null){
+            NodeCounterModel previousCounterModel= nodeConsumeCounters.get(key);
+            if(previousCounterModel==null){
                 nodeConsumeCounters.expire(key,nodeCounterModel,90, TimeUnit.SECONDS);
-            }else if(counterModel.getTime()<nodeCounterModel.getTime()){
+            }else if(previousCounterModel.getTime()<nodeCounterModel.getTime()){
                 nodeConsumeCounters.expire(key,nodeCounterModel,90, TimeUnit.SECONDS);
             }
         });

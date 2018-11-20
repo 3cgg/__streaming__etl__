@@ -8,7 +8,7 @@ import me.libme.fn.netty.server.fn._dispatch.PathListener;
  */
 public interface CounterReporter extends PathListener {
 
-    String PATH="/node/status/report";
+    String PATH="/node/stream-counter/report";
 
     boolean count(String consumerCountMapJson,HttpRequest httpRequest);
 
